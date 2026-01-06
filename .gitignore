@@ -1,0 +1,11 @@
+image/
+logs/
+*.log
+.env
+*.pt
+*.pth
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/

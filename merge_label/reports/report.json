@@ -1,0 +1,80 @@
+{
+  "scale": {
+    "shape_hq_complete": 535,
+    "shape_mq_complete": 920,
+    "shape_all": 1332,
+    "coat_hq_complete": 531,
+    "coat_mq_complete": 851,
+    "coat_all": 1381,
+    "train_files": 1266,
+    "overlap_rate": 87.4913614374568,
+    "only_in_shape": 66,
+    "only_in_coat": 115
+  },
+  "quality_distribution": {
+    "HQ-HQ": {
+      "count": 202,
+      "percentage": 15.96
+    },
+    "HQ-MQ": {
+      "count": 315,
+      "percentage": 24.88
+    },
+    "MQ-HQ": {
+      "count": 293,
+      "percentage": 23.14
+    },
+    "MQ-MQ": {
+      "count": 456,
+      "percentage": 36.02
+    }
+  },
+  "feature_distribution": {
+    "Tongueshape_spots": {
+      "label": "有点刺",
+      "true_count": 159,
+      "percentage": 12.56
+    },
+    "Tongueshape_cracks": {
+      "label": "有舌痕",
+      "true_count": 375,
+      "percentage": 29.62
+    },
+    "Tongueshape_teethmarks": {
+      "label": "有齿痕",
+      "true_count": 542,
+      "percentage": 42.81
+    },
+    "Tongueshape_nospecialshape": {
+      "label": "无特殊舌形",
+      "true_count": 315,
+      "percentage": 24.88
+    },
+    "Tonguecoat_greasy": {
+      "label": "腻苔",
+      "true_count": 397,
+      "percentage": 31.36
+    },
+    "Tonguecoat_rotten": {
+      "label": "腐苔",
+      "true_count": 26,
+      "percentage": 2.05
+    },
+    "Tonguecoat_nospecialgreasy": {
+      "label": "无特别腻腐苔",
+      "true_count": 845,
+      "percentage": 66.75
+    }
+  },
+  "shape_combination": {
+    "0_features": 315,
+    "1_features": 827,
+    "2_features": 123,
+    "3_features": 1
+  },
+  "coat_combination": {
+    "0_features": 845,
+    "1_features": 419,
+    "2_features": 2
+  }
+}
