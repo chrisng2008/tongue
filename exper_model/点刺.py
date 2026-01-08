@@ -465,7 +465,7 @@ class LabelProcessor:
 # ==================== 主函数 ====================
 if __name__ == "__main__":
     # 设置设备
-    device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     
     # 数据路径 - 修改为点刺分类的数据路径

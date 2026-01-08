@@ -331,28 +331,35 @@ def compute_class_weights(df):
     return weights
 
 
-def search_best_thresholds(y_true, y_prob, metric='f1'):
+def search_best_thresholds(y_true, y_prob, metric='f1', search_range=(0.05, 0.95), step=0.01):
     """
-    为多标签搜索最佳阈值
+    为多标签搜索最佳阈值（网格搜索）
 
     参数:
-        y_true: [N, 3]
-        y_prob: [N, 3]
-        metric: 'f1' or 'balanced_accuracy'
+        y_true: [N, 3] numpy array
+        y_prob: [N, 3] numpy array (sigmoid后的概率)
+        metric: 'f1' (推荐) or 'balanced_accuracy'
+        search_range: (min_thresh, max_thresh)
+        step: 搜索步长（0.01更精细，0.05更快）
 
     返回:
         best_thresholds: list of 3 floats
+        best_scores: list of 3 floats
+        all_scores: dict {label: {threshold: score}}
     """
     from sklearn.metrics import f1_score, balanced_accuracy_score
 
     best_thresholds = []
+    best_scores = []
+    all_scores = {}
     n_labels = y_true.shape[1]
 
-    for i in range(n_labels):
+    for i, label in enumerate(MultiTaskMetrics.SHAPE_LABELS):
         best_score = 0
         best_thresh = 0.5
+        scores_dict = {}
 
-        for thresh in np.arange(0.1, 0.9, 0.05):
+        for thresh in np.arange(search_range[0], search_range[1], step):
             pred = (y_prob[:, i] >= thresh).astype(int)
 
             if metric == 'f1':
@@ -360,13 +367,59 @@ def search_best_thresholds(y_true, y_prob, metric='f1'):
             else:
                 score = balanced_accuracy_score(y_true[:, i], pred)
 
+            scores_dict[round(thresh, 3)] = score
+
             if score > best_score:
                 best_score = score
                 best_thresh = thresh
 
         best_thresholds.append(best_thresh)
+        best_scores.append(best_score)
+        all_scores[label] = scores_dict
 
-    return best_thresholds
+    return best_thresholds, best_scores, all_scores
+
+
+def compute_metrics_with_thresholds(y_true, y_prob, thresholds):
+    """
+    使用指定阈值计算指标
+
+    参数:
+        y_true: [N, 3]
+        y_prob: [N, 3]
+        thresholds: list of 3 floats
+
+    返回:
+        metrics_dict: 包含P/R/F1的字典
+    """
+    pred = (y_prob >= np.array(thresholds)).astype(int)
+
+    metrics = {}
+    for i, label in enumerate(MultiTaskMetrics.SHAPE_LABELS):
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            y_true[:, i], pred[:, i], average='binary', zero_division=0
+        )
+
+        try:
+            auroc = roc_auc_score(y_true[:, i], y_prob[:, i]) if len(np.unique(y_true[:, i])) > 1 else 0.5
+        except:
+            auroc = 0.5
+
+        metrics[label] = {
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1': float(f1),
+            'auroc': float(auroc),
+            'threshold': float(thresholds[i]),
+            'support': int(y_true[:, i].sum())
+        }
+
+    # 宏平均
+    metrics['macro_f1'] = np.mean([metrics[label]['f1'] for label in MultiTaskMetrics.SHAPE_LABELS])
+    metrics['macro_precision'] = np.mean([metrics[label]['precision'] for label in MultiTaskMetrics.SHAPE_LABELS])
+    metrics['macro_recall'] = np.mean([metrics[label]['recall'] for label in MultiTaskMetrics.SHAPE_LABELS])
+
+    return metrics
 
 
 if __name__ == "__main__":

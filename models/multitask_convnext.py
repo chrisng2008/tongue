@@ -127,24 +127,35 @@ class MultiTaskLoss(nn.Module):
 
     组合:
         - Shape: BCEWithLogitsLoss (多标签)
-        - Coat: CrossEntropyLoss (多类)
+        - Coat: CrossEntropyLoss (多类) 或 FocalLoss
     """
-    def __init__(self, w_shape=1.0, w_coat=1.0, class_weights=None):
+    def __init__(self, w_shape=1.0, w_coat=1.0, class_weights=None, use_focal=False, focal_gamma=2.0, focal_alpha=None):
         super().__init__()
 
         self.w_shape = w_shape
         self.w_coat = w_coat
+        self.use_focal = use_focal
 
         # Shape损失（多标签BCE）
         self.shape_loss_fn = nn.BCEWithLogitsLoss(reduction='none')
 
-        # Coat损失（多类CE，支持class weights）
-        if class_weights is not None:
-            class_weights = torch.tensor(class_weights, dtype=torch.float32)
-        self.coat_loss_fn = nn.CrossEntropyLoss(
-            weight=class_weights,
-            reduction='none'
-        )
+        # Coat损失配置
+        if use_focal:
+            # 使用 Focal Loss
+            self.focal_gamma = focal_gamma
+            self.focal_alpha = focal_alpha  # [alpha_greasy, alpha_rotten, alpha_nospecial]
+            if self.focal_alpha is not None:
+                self.focal_alpha = torch.tensor(self.focal_alpha, dtype=torch.float32)
+            print(f"使用 Focal Loss (gamma={focal_gamma}, alpha={self.focal_alpha})")
+        else:
+            # 使用加权 CE
+            if class_weights is not None:
+                class_weights = torch.tensor(class_weights, dtype=torch.float32)
+            self.coat_loss_fn = nn.CrossEntropyLoss(
+                weight=class_weights,
+                reduction='none'
+            )
+            print(f"使用加权 CE (class_weights={class_weights})")
 
     def forward(self, logits_shape, logits_coat, y_shape, y_coat, sample_weights=None):
         """
@@ -168,7 +179,10 @@ class MultiTaskLoss(nn.Module):
         loss_shape_per_sample = loss_shape_per_label.mean(dim=1)  # [B]
 
         # Coat损失 [B]
-        loss_coat_per_sample = self.coat_loss_fn(logits_coat, y_coat)  # [B]
+        if self.use_focal:
+            loss_coat_per_sample = self._focal_loss(logits_coat, y_coat)
+        else:
+            loss_coat_per_sample = self.coat_loss_fn(logits_coat, y_coat)
 
         # 组合损失（每个样本）
         loss_per_sample = (
@@ -191,6 +205,41 @@ class MultiTaskLoss(nn.Module):
         }
 
         return loss, loss_dict
+
+    def _focal_loss(self, logits, targets):
+        """
+        Focal Loss 实现
+
+        FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
+
+        参数:
+            logits: [B, 3]
+            targets: [B] int (0, 1, 2)
+
+        返回:
+            loss: [B]
+        """
+        ce_loss = nn.functional.cross_entropy(logits, targets, reduction='none')
+
+        # 获取概率
+        probs = nn.functional.softmax(logits, dim=1)
+
+        # 获取对应类别的概率 p_t
+        pt = probs[range(len(targets)), targets]
+
+        # Focal Loss
+        focal_weight = (1 - pt) ** self.focal_gamma
+
+        # 应用 alpha
+        if self.focal_alpha is not None:
+            if self.focal_alpha.device != logits.device:
+                self.focal_alpha = self.focal_alpha.to(logits.device)
+            alpha_t = self.focal_alpha[targets]
+            focal_loss = alpha_t * focal_weight * ce_loss
+        else:
+            focal_loss = focal_weight * ce_loss
+
+        return focal_loss
 
 
 if __name__ == "__main__":

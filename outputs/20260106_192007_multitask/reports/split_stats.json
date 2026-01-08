@@ -1,0 +1,13 @@
+{
+  "total_samples": 1263,
+  "train_samples": 1010,
+  "val_samples": 253,
+  "val_ratio": 0.2,
+  "stratified": true,
+  "val_Tonguecoat_greasy": 79,
+  "val_Tonguecoat_rotten": 5,
+  "val_Tonguecoat_nospecialgreasy": 169,
+  "val_Tongueshape_spots": 34,
+  "val_Tongueshape_cracks": 78,
+  "val_Tongueshape_teethmarks": 108
+}

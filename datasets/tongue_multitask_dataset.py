@@ -256,45 +256,97 @@ def load_and_clean_data(excel_path, image_folder, drop_conflicts=True):
     return df, missing_df, conflict_df
 
 
-def split_train_val(df, val_ratio=0.2, random_state=42):
+def split_train_val(df, val_ratio=0.2, random_state=42, stratify_by_coat=True):
     """
-    划分训练集和验证集
+    划分训练集和验证集（支持按腻腐苔类别分层抽样）
+
+    参数:
+        df: 清洗后的DataFrame
+        val_ratio: 验证集比例
+        random_state: 随机种子
+        stratify_by_coat: 是否按腻腐苔类别分层抽样（默认True）
 
     返回:
-        train_df, val_df
+        train_df, val_df, split_stats (dict)
     """
     from sklearn.model_selection import train_test_split
 
-    # 检查是否有group字段
-    group_col = None
-    potential_group_cols = ['patient_id', 'id', 'subject_id']
-    for col in potential_group_cols:
-        if col in df.columns:
-            group_col = col
-            break
+    # 创建腻腐苔类别标签（用于分层）
+    df['_coat_class'] = 0  # 默认 greasy
+    df.loc[df['Tonguecoat_rotten'] == 1, '_coat_class'] = 1  # rotten
+    df.loc[df['Tonguecoat_nospecialgreasy'] == 1, '_coat_class'] = 2  # nospecial
 
-    if group_col:
-        print(f"使用 '{group_col}' 列进行group split")
-        unique_groups = df[group_col].unique()
-        train_groups, val_groups = train_test_split(
-            unique_groups,
-            test_size=val_ratio,
-            random_state=random_state
-        )
-        train_df = df[df[group_col].isin(train_groups)]
-        val_df = df[df[group_col].isin(val_groups)]
+    # 检查各类数量
+    coat_counts = df['_coat_class'].value_counts().to_dict()
+    print(f"\n腻腐苔类别分布:")
+    for class_id, name in [(0, 'greasy'), (1, 'rotten'), (2, 'nospecialgreasy')]:
+        count = coat_counts.get(class_id, 0)
+        print(f"  {name}: {count} 样本")
+
+    # 检查 rotten 数量是否足够
+    rotten_count = coat_counts.get(1, 0)
+    min_val_rotten = 5
+
+    if stratify_by_coat and rotten_count >= min_val_rotten:
+        # 使用分层抽样
+        print(f"\n使用 stratified split（按腻腐苔类别）")
+
+        try:
+            train_df, val_df = train_test_split(
+                df,
+                test_size=val_ratio,
+                random_state=random_state,
+                stratify=df['_coat_class']
+            )
+        except ValueError as e:
+            print(f"Stratified split 失败: {e}")
+            print("回退到普通随机 split")
+            train_df, val_df = train_test_split(
+                df,
+                test_size=val_ratio,
+                random_state=random_state
+            )
     else:
-        print("使用普通随机split")
+        if rotten_count < min_val_rotten:
+            print(f"\n警告: rotten 类别样本过少 ({rotten_count} < {min_val_rotten})")
+            print("建议使用 k-fold 交叉验证或收集更多数据")
+            print("使用普通随机 split（可能不稳定）")
+
         train_df, val_df = train_test_split(
             df,
             test_size=val_ratio,
             random_state=random_state
         )
 
-    print(f"训练集: {len(train_df)} 样本")
+    # 删除临时列
+    train_df = train_df.drop('_coat_class', axis=1).reset_index(drop=True)
+    val_df = val_df.drop('_coat_class', axis=1).reset_index(drop=True)
+
+    # 统计划分信息
+    split_stats = {
+        'total_samples': len(df),
+        'train_samples': len(train_df),
+        'val_samples': len(val_df),
+        'val_ratio': val_ratio,
+        'stratified': stratify_by_coat and rotten_count >= min_val_rotten,
+    }
+
+    # 验证集各类数量
+    for col in ['Tonguecoat_greasy', 'Tonguecoat_rotten', 'Tonguecoat_nospecialgreasy']:
+        split_stats[f'val_{col}'] = int(val_df[col].sum())
+    for col in ['Tongueshape_spots', 'Tongueshape_cracks', 'Tongueshape_teethmarks']:
+        split_stats[f'val_{col}'] = int(val_df[col].sum())
+
+    print(f"\n训练集: {len(train_df)} 样本")
     print(f"验证集: {len(val_df)} 样本")
 
-    return train_df.reset_index(drop=True), val_df.reset_index(drop=True)
+    # 打印验证集类别分布
+    print(f"\n验证集腻腐苔分布:")
+    print(f"  greasy: {split_stats['val_Tonguecoat_greasy']}")
+    print(f"  rotten: {split_stats['val_Tonguecoat_rotten']}")
+    print(f"  nospecialgreasy: {split_stats['val_Tonguecoat_nospecialgreasy']}")
+
+    return train_df, val_df, split_stats
 
 
 def compute_sample_weights(train_df):

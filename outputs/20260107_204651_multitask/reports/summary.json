@@ -1,0 +1,56 @@
+{
+  "experiment_name": "convnext_large",
+  "timestamp": "2026-01-07T21:00:56.123736",
+  "config": {
+    "stratified_split": true,
+    "use_focal_loss": true,
+    "search_thresholds": true,
+    "log_sampling": true
+  },
+  "data": {
+    "total_samples": 1263,
+    "train_samples": 1010,
+    "val_samples": 253,
+    "missing_images": 1,
+    "conflict_samples": 2
+  },
+  "training": {
+    "total_epochs": 33,
+    "best_val_score": 0.6644827901371113,
+    "best_epoch": 23
+  },
+  "final_metrics_fixed": {
+    "shape_spots_f1": 0.647887323943662,
+    "shape_cracks_f1": 0.7152317880794702,
+    "shape_teethmarks_f1": 0.5317919075144508,
+    "shape_macro_f1": 0.6316370065125277,
+    "coat_macro_f1": 0.6973285737616948,
+    "combined_score": 0.6644827901371113
+  },
+  "final_metrics_thresholded": {
+    "shape_spots_f1": 0.6666666666666666,
+    "shape_cracks_f1": 0.7717391304347826,
+    "shape_teethmarks_f1": 0.6590909090909091,
+    "shape_macro_f1": 0.6991655687307862,
+    "coat_macro_f1": 0.6973285737616948,
+    "combined_score": 0.6982470712462405,
+    "best_thresholds": [
+      0.45000000000000007,
+      0.18000000000000005,
+      0.19
+    ]
+  },
+  "val_support": {
+    "total_samples": 1263,
+    "train_samples": 1010,
+    "val_samples": 253,
+    "val_ratio": 0.2,
+    "stratified": true,
+    "val_Tonguecoat_greasy": 79,
+    "val_Tonguecoat_rotten": 5,
+    "val_Tonguecoat_nospecialgreasy": 169,
+    "val_Tongueshape_spots": 34,
+    "val_Tongueshape_cracks": 78,
+    "val_Tongueshape_teethmarks": 108
+  }
+}
